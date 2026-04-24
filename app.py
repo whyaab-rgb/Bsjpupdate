@@ -1,14 +1,19 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
 import requests
 from datetime import datetime, time
-from zoneinfo import ZoneInfo
 
-# =========================
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
+
+# ======================================================
 # PAGE CONFIG
-# =========================
+# ======================================================
 st.set_page_config(
     page_title="BSJP Screener Premium",
     page_icon="📈",
@@ -16,9 +21,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# =========================
+# ======================================================
 # DEFAULT WATCHLIST
-# =========================
+# ======================================================
 DEFAULT_WATCHLIST = """
 AALI.JK,ACES.JK,ADHI.JK,ADMR.JK,ADRO.JK,AKRA.JK,AMMN.JK,ANTM.JK,ARTO.JK,ASII.JK,
 BBCA.JK,BBNI.JK,BBRI.JK,BBTN.JK,BBYB.JK,BMRI.JK,BRIS.JK,BRMS.JK,BRPT.JK,BSDE.JK,
@@ -32,9 +37,9 @@ TKIM.JK,TLKM.JK,TOBA.JK,TOWR.JK,UNTR.JK,UNVR.JK,WIKA.JK
 MIN_VALUE = 1_000_000_000
 MIN_VOLUME = 500_000
 
-# =========================
+# ======================================================
 # CSS PREMIUM
-# =========================
+# ======================================================
 st.markdown("""
 <style>
 .stApp {
@@ -43,15 +48,14 @@ st.markdown("""
 }
 
 .block-container {
-    max-width: 1550px;
+    max-width: 1600px;
     padding-top: 1rem;
     padding-left: 1rem;
     padding-right: 1rem;
 }
 
-/* SIDEBAR */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #07111f 0%, #06101d 100%);
+    background: linear-gradient(180deg, #06101d 0%, #071827 100%);
     border-right: 1px solid #112b47;
 }
 
@@ -60,13 +64,13 @@ st.markdown("""
 }
 
 .sidebar-logo {
-    padding: 18px 10px 14px 10px;
-    border-bottom: 1px solid #15314f;
-    margin-bottom: 12px;
+    padding: 18px 10px 16px 10px;
+    border-bottom: 1px solid #173a5b;
+    margin-bottom: 14px;
 }
 
 .logo-title {
-    font-size: 32px;
+    font-size: 33px;
     font-weight: 900;
     letter-spacing: 1px;
     line-height: 1;
@@ -102,12 +106,12 @@ st.markdown("""
     margin-top: 14px;
 }
 
-/* HEADER */
 .top-header {
-    background: #07111f;
-    border: 1px solid #112b47;
+    background: linear-gradient(145deg, #081626, #07111f);
+    border: 1px solid #173a5b;
     border-radius: 16px;
     padding: 16px 18px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.25);
 }
 
 .title-main {
@@ -126,7 +130,6 @@ st.markdown("""
     font-weight: 800;
 }
 
-/* CARDS */
 .card {
     background: linear-gradient(145deg, #0b1d31, #081626);
     border: 1px solid #173a5b;
@@ -140,7 +143,8 @@ st.markdown("""
     background: linear-gradient(145deg, #0b1d31, #081626);
     border: 1px solid #173a5b;
     border-radius: 16px;
-    padding: 15px;
+    padding: 17px;
+    min-height: 280px;
 }
 
 .metric-title {
@@ -161,7 +165,6 @@ st.markdown("""
 .red { color: #ff5050; font-weight: 900; }
 .gray { color: #a9b8cc; }
 
-/* FILTER BAR */
 .filter-box {
     background: #0b1d31;
     border: 1px solid #173a5b;
@@ -169,7 +172,6 @@ st.markdown("""
     padding: 14px;
 }
 
-/* BUTTON */
 .stButton > button {
     width: 100%;
     border-radius: 10px;
@@ -184,34 +186,32 @@ st.markdown("""
     background: linear-gradient(90deg, #2d95ff, #1557d6);
 }
 
-/* INPUT */
 input, textarea, select {
     background-color: #ffffff !important;
     color: #111827 !important;
     border-radius: 10px !important;
 }
 
-/* TABLE */
-thead tr th {
-    background-color: #0e2238 !important;
-    color: #ffffff !important;
-    font-weight: 900 !important;
-    border: 1px solid #1c3c5c !important;
+/* Premium dataframe look */
+[data-testid="stDataFrame"] {
+    border: 1px solid #173a5b;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 24px rgba(0,0,0,.25);
 }
 
-tbody tr td {
-    border: 1px solid #1c3c5c !important;
+#MainMenu {
+    visibility: hidden;
 }
-
-/* HIDE STREAMLIT FOOTER */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
+footer {
+    visibility: hidden;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
+# ======================================================
 # SIDEBAR
-# =========================
+# ======================================================
 with st.sidebar:
     st.markdown("""
     <div class="sidebar-logo">
@@ -238,10 +238,8 @@ with st.sidebar:
         st.markdown(f"<div class='{cls}'>{item}</div>", unsafe_allow_html=True)
 
     st.markdown("---")
-
     st.markdown("### ⚙️ Pengaturan")
 
-    preset = st.selectbox("Preset Watchlist", ["IDX Pilihan", "Custom"], index=0)
     period = st.selectbox("Periode", ["3mo", "6mo", "1y"], index=1)
     interval = st.selectbox("Interval", ["1d", "1h", "30m", "15m"], index=0)
 
@@ -292,16 +290,13 @@ with st.sidebar:
 
     run_screener = st.button("Jalankan Screener")
 
-    st.markdown("""
+    st.markdown(f"""
     <div class="side-card">
         <b>🔔 Alert Telegram</b><br>
         <span style="font-size:13px;color:#b7c6d8;">
         Dapatkan notifikasi sinyal BSJP KUAT langsung ke Telegram Anda.
         </span>
     </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"""
     <div class="side-card">
         <b>Auto Refresh</b><br><br>
         Interval: <b>{refresh_seconds} detik</b><br>
@@ -313,34 +308,26 @@ with st.sidebar:
 if auto_refresh:
     st.markdown(f"<meta http-equiv='refresh' content='{refresh_seconds}'>", unsafe_allow_html=True)
 
-# =========================
-# WATCHLIST LOGIC
-# =========================
-watchlist = [x.strip().upper() for x in watchlist_input.replace("\n", ",").split(",") if x.strip()]
-watchlist = [x if x.endswith(".JK") else f"{x}.JK" for x in watchlist]
+# ======================================================
+# HELPERS
+# ======================================================
+def now_jakarta():
+    if ZoneInfo is not None:
+        return datetime.now(ZoneInfo("Asia/Jakarta"))
+    return datetime.now()
 
-if manual_symbol:
-    manual_symbol = manual_symbol.strip().upper()
-    manual_symbol = manual_symbol if manual_symbol.endswith(".JK") else f"{manual_symbol}.JK"
+def normalize_watchlist(text):
+    tickers = [x.strip().upper() for x in text.replace("\n", ",").split(",") if x.strip()]
+    tickers = [x if x.endswith(".JK") else f"{x}.JK" for x in tickers]
+    return list(dict.fromkeys(tickers))
 
-    if search_mode == "Tambahkan ke watchlist":
-        if manual_symbol not in watchlist:
-            watchlist.append(manual_symbol)
-    else:
-        watchlist = [manual_symbol]
-
-# =========================
-# FUNCTIONS
-# =========================
 def send_telegram_message(token, chat, message):
     try:
         if not token or not chat:
             return False, "Bot Token atau Chat ID belum diisi."
-
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = {"chat_id": chat, "text": message, "parse_mode": "HTML"}
         r = requests.post(url, data=payload, timeout=10)
-
         if r.status_code == 200:
             return True, "Telegram berhasil dikirim."
         return False, r.text
@@ -365,7 +352,9 @@ def macd(close):
     return macd_line, signal, hist
 
 def rupiah_short(x):
-    if pd.isna(x):
+    try:
+        x = float(x)
+    except Exception:
         return "-"
     if x >= 1_000_000_000_000:
         return f"{x/1_000_000_000_000:.2f} T"
@@ -375,6 +364,36 @@ def rupiah_short(x):
         return f"{x/1_000_000:.2f} M"
     return f"{x:,.0f}"
 
+def volume_short(x):
+    try:
+        x = float(x)
+    except Exception:
+        return "-"
+    if x >= 1_000_000_000:
+        return f"{x/1_000_000_000:.2f} B"
+    if x >= 1_000_000:
+        return f"{x/1_000_000:.1f} M"
+    if x >= 1_000:
+        return f"{x/1_000:.1f} K"
+    return f"{x:,.0f}"
+
+# ======================================================
+# WATCHLIST LOGIC
+# ======================================================
+watchlist = normalize_watchlist(watchlist_input)
+
+if manual_symbol:
+    manual_symbol = manual_symbol.strip().upper()
+    manual_symbol = manual_symbol if manual_symbol.endswith(".JK") else f"{manual_symbol}.JK"
+    if search_mode == "Tambahkan ke watchlist":
+        if manual_symbol not in watchlist:
+            watchlist.append(manual_symbol)
+    else:
+        watchlist = [manual_symbol]
+
+# ======================================================
+# BSJP ENGINE
+# ======================================================
 def calculate_bsjp(ticker, period="6mo", interval="1d"):
     try:
         df = yf.download(
@@ -386,21 +405,32 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
             threads=False
         )
 
-        if df.empty or len(df) < 60:
+        if df is None or df.empty or len(df) < 60:
             return None
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        df = df.dropna()
+        needed = ["Close", "High", "Low", "Volume"]
+        for col in needed:
+            if col not in df.columns:
+                return None
 
-        close = df["Close"]
-        high = df["High"]
-        low = df["Low"]
-        volume = df["Volume"]
+        df = df[needed].dropna()
+
+        if len(df) < 60:
+            return None
+
+        close = pd.to_numeric(df["Close"], errors="coerce")
+        high = pd.to_numeric(df["High"], errors="coerce")
+        low = pd.to_numeric(df["Low"], errors="coerce")
+        volume = pd.to_numeric(df["Volume"], errors="coerce")
 
         last_close = float(close.iloc[-1])
         prev_close = float(close.iloc[-2])
+        if prev_close <= 0 or last_close <= 0:
+            return None
+
         change_pct = ((last_close - prev_close) / prev_close) * 100
 
         ma20 = close.rolling(20).mean()
@@ -412,7 +442,8 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
             return None
 
         avg_vol20 = volume.rolling(20).mean()
-        rvol = float(volume.iloc[-1] / avg_vol20.iloc[-1]) if avg_vol20.iloc[-1] > 0 else 0
+        avg_vol_last = float(avg_vol20.iloc[-1]) if not pd.isna(avg_vol20.iloc[-1]) else 0
+        rvol = float(volume.iloc[-1] / avg_vol_last) if avg_vol_last > 0 else 0
         value = last_close * float(volume.iloc[-1])
 
         support = float(low.tail(20).min())
@@ -438,12 +469,13 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
         score = 0
         reasons = []
 
+        # Trend & structure
         if last_close > ma20.iloc[-1] and last_close > ma50.iloc[-1]:
             score += 10
             reasons.append("Harga di atas MA20 & MA50")
         if ma20.iloc[-1] > ma50.iloc[-1]:
             score += 5
-            reasons.append("MA20 di atas MA50")
+            reasons.append("MA20 > MA50")
         if low.iloc[-1] >= low.tail(10).min():
             score += 5
             reasons.append("Tidak membuat low baru")
@@ -451,19 +483,21 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
             score += 5
             reasons.append("Dekat breakout")
 
+        # Volume & accumulation
         if rvol > 1.5:
             score += 8
             reasons.append("RVOL tinggi")
-        if volume.iloc[-1] > avg_vol20.iloc[-1]:
+        if volume.iloc[-1] > avg_vol_last:
             score += 6
-            reasons.append("Volume di atas rata-rata")
+            reasons.append("Volume naik")
         if value >= MIN_VALUE:
             score += 5
             reasons.append("Value likuid")
         if last_close > prev_close and volume.iloc[-1] > volume.iloc[-2]:
             score += 6
-            reasons.append("Candle naik + volume naik")
+            reasons.append("Candle naik + volume")
 
+        # Momentum
         if 45 <= latest_rsi <= 68:
             score += 7
             reasons.append("RSI sehat")
@@ -472,14 +506,15 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
             reasons.append("RSI naik")
         if latest_hist > prev_hist:
             score += 5
-            reasons.append("MACD histogram membaik")
+            reasons.append("MACD membaik")
         if macd_line.iloc[-1] > macd_signal.iloc[-1]:
             score += 4
             reasons.append("MACD bullish")
 
+        # Risk reward
         if rr >= 2:
             score += 8
-            reasons.append("RR minimal 1:2")
+            reasons.append("RR bagus")
         if abs(last_close - support) / last_close <= 0.08:
             score += 4
             reasons.append("Support dekat")
@@ -490,19 +525,20 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
             score += 4
             reasons.append("Target realistis")
 
-        gain_3d = ((last_close - close.iloc[-4]) / close.iloc[-4]) * 100 if len(close) > 4 else 0
+        # Anti FOMO
+        gain_3d = ((last_close - close.iloc[-4]) / close.iloc[-4]) * 100 if len(close) > 4 and close.iloc[-4] > 0 else 0
 
         if gain_3d <= 8:
             score += 4
             reasons.append("Tidak FOMO")
         if latest_rsi < 75:
             score += 3
-            reasons.append("RSI tidak overbought")
+            reasons.append("Tidak overbought")
         if abs(last_close - ma20.iloc[-1]) / last_close <= 0.08:
             score += 3
-            reasons.append("Harga dekat MA20")
+            reasons.append("Dekat MA20")
 
-        score = min(score, 100)
+        score = int(min(score, 100))
 
         trend = "UP" if last_close > ma20.iloc[-1] > ma50.iloc[-1] else "SIDEWAYS" if last_close >= ma50.iloc[-1] else "DOWN"
         macd_status = "Bullish" if macd_line.iloc[-1] > macd_signal.iloc[-1] else "Bearish"
@@ -535,12 +571,12 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
             "Value": value,
             "RSI": round(latest_rsi, 1),
             "MACD": macd_status,
-            "MA20 / MA50": "✅ / ✅" if last_close > ma20.iloc[-1] and last_close > ma50.iloc[-1] else "❌ / ❌",
+            "MA20/MA50": "✅ / ✅" if last_close > ma20.iloc[-1] and last_close > ma50.iloc[-1] else "❌ / ❌",
             "Trend": trend,
             "Breakout": round(breakout, 0),
             "Support": round(support, 0),
             "Resistance": round(resistance, 0),
-            "Score": int(score),
+            "Score": score,
             "Status": status,
             "Entry Area": f"{entry_low:,.0f} - {entry_high:,.0f}",
             "SL": round(stop_loss, 0),
@@ -553,87 +589,26 @@ def calculate_bsjp(ticker, period="6mo", interval="1d"):
     except Exception:
         return None
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def scan_market(tickers, period, interval):
     rows = []
     for ticker in tickers:
         result = calculate_bsjp(ticker, period, interval)
-        if result:
+        if result is not None:
             rows.append(result)
 
-    df = pd.DataFrame(rows)
-    if df.empty:
-        return df
+    if not rows:
+        return pd.DataFrame()
 
+    df = pd.DataFrame(rows)
     df = df.sort_values("Score", ascending=False).reset_index(drop=True)
     df.insert(0, "Rank", df.index + 1)
     return df
 
-def color_status(v):
-    if v == "BSJP KUAT":
-        return "color:#22e57b;font-weight:900;"
-    if v == "BSJP SIAP":
-        return "color:#2d95ff;font-weight:900;"
-    if v == "PANTAU":
-        return "color:#ffc928;font-weight:900;"
-    if v == "TUNGGU":
-        return "color:#ff5050;font-weight:900;"
-    return ""
-
-def color_change(v):
-    return "color:#22e57b;font-weight:900;" if float(v) > 0 else "color:#ff5050;font-weight:900;"
-
-def color_score(v):
-    if v >= 80:
-        return "color:#22e57b;font-weight:900;"
-    if v >= 70:
-        return "color:#2d95ff;font-weight:900;"
-    if v >= 60:
-        return "color:#ffc928;font-weight:900;"
-    return "color:#ff5050;font-weight:900;"
-
-def color_macd(v):
-    return "color:#22e57b;font-weight:900;" if v == "Bullish" else "color:#ff5050;font-weight:900;"
-
-def style_table(data):
-    display = data.copy()
-
-    for c in ["Harga", "Breakout", "Support", "Resistance", "SL", "Target 1", "Target 2"]:
-        display[c] = display[c].apply(lambda x: f"{x:,.0f}")
-
-    display["Volume"] = display["Volume"].apply(lambda x: f"{x:,.0f}")
-    display["Value"] = display["Value"].apply(rupiah_short)
-    display["Risk/Reward"] = display["Risk/Reward"].apply(lambda x: f"1 : {x:.2f}")
-
-    return (
-        display.style
-        .map(color_status, subset=["Status"])
-        .map(color_change, subset=["Chg %"])
-        .map(color_score, subset=["Score"])
-        .map(color_macd, subset=["MACD"])
-        .set_properties(**{
-            "background-color": "#081626",
-            "color": "#dce7f7",
-            "border-color": "#1c3c5c",
-            "font-size": "13px"
-        })
-        .set_table_styles([
-            {"selector": "th", "props": [
-                ("background-color", "#0e2238"),
-                ("color", "#ffffff"),
-                ("font-weight", "900"),
-                ("border", "1px solid #1c3c5c")
-            ]},
-            {"selector": "td", "props": [
-                ("border", "1px solid #1c3c5c")
-            ]}
-        ])
-    )
-
-# =========================
+# ======================================================
 # HEADER
-# =========================
-now = datetime.now(ZoneInfo("Asia/Jakarta"))
+# ======================================================
+now = now_jakarta()
 market_open = time(9, 0) <= now.time() <= time(16, 15) and now.weekday() < 5
 market_text = "Market Open" if market_open else "Market Closed"
 
@@ -654,9 +629,6 @@ st.markdown(f"""
 
 st.write("")
 
-# =========================
-# TELEGRAM TEST
-# =========================
 if test_telegram:
     ok, msg = send_telegram_message(
         bot_token,
@@ -668,22 +640,25 @@ if test_telegram:
     else:
         st.sidebar.error(msg)
 
-# =========================
+# ======================================================
 # SCAN DATA
-# =========================
-with st.spinner("Sedang scan saham IDX..."):
-    df = scan_market(watchlist, period, interval)
-
-if df.empty:
-    st.error("Data belum tersedia. Coba refresh atau kurangi watchlist.")
+# ======================================================
+try:
+    with st.spinner("Sedang scan saham IDX..."):
+        df = scan_market(watchlist, period, interval)
+except Exception as e:
+    st.error(f"Error saat scan data: {e}")
     st.stop()
 
-filtered = df.copy()
-filtered = filtered[filtered["Harga"] <= max_price]
+if df.empty:
+    st.error("Data belum tersedia. Coba pilih interval 1d, periode 6mo/1y, atau kurangi watchlist.")
+    st.stop()
 
-strong_count_all = int((filtered["Status"] == "BSJP KUAT").sum())
-ready_count_all = int((filtered["Status"] == "BSJP SIAP").sum())
-watch_count_all = int((filtered["Status"] == "PANTAU").sum())
+filtered_base = df[df["Harga"] <= max_price].copy()
+
+strong_count_all = int((filtered_base["Status"] == "BSJP KUAT").sum())
+ready_count_all = int((filtered_base["Status"] == "BSJP SIAP").sum())
+watch_count_all = int((filtered_base["Status"] == "PANTAU").sum())
 
 if strong_count_all >= 5:
     mood = "BULLISH"
@@ -695,9 +670,9 @@ else:
     mood = "SELEKTIF"
     mood_class = "blue"
 
-# =========================
+# ======================================================
 # SUMMARY CARDS
-# =========================
+# ======================================================
 c1, c2, c3, c4, c5 = st.columns(5)
 
 cards = [
@@ -724,9 +699,9 @@ for col, (title, value, icon, color) in zip([c1, c2, c3, c4, c5], cards):
 
 st.write("")
 
-# =========================
+# ======================================================
 # FILTER BAR
-# =========================
+# ======================================================
 st.markdown('<div class="filter-box">', unsafe_allow_html=True)
 f1, f2, f3, f4, f5, f6 = st.columns([1, 1, 1, 1, 2, 1])
 
@@ -742,8 +717,9 @@ with f5:
     search = st.text_input("Cari kode / nama emiten...", placeholder="Contoh: BBCA / GOTO")
 with f6:
     reset_filter = st.button("Reset Filter")
-
 st.markdown('</div>', unsafe_allow_html=True)
+
+filtered = filtered_base.copy()
 
 if price_filter == "< 1000":
     filtered = filtered[filtered["Harga"] < 1000]
@@ -761,30 +737,86 @@ if only_best:
 if search:
     filtered = filtered[filtered["Kode"].str.contains(search.upper(), na=False)]
 
-filtered = filtered.head(int(max_result))
+filtered = filtered.head(int(max_result)).copy()
 
 st.write("")
 
-# =========================
-# TABLE
-# =========================
-st.markdown("### 🏆 RANKING BSJP")
+# ======================================================
+# PREMIUM TABLE
+# ======================================================
+def status_emoji(status):
+    if status == "BSJP KUAT":
+        return "🟢 BSJP KUAT"
+    if status == "BSJP SIAP":
+        return "🔵 BSJP SIAP"
+    if status == "PANTAU":
+        return "🟡 PANTAU"
+    return "🔴 TUNGGU"
 
 if filtered.empty:
     st.warning("Tidak ada saham yang lolos filter.")
     st.stop()
 
+table_df = filtered.copy()
+table_df["Status"] = table_df["Status"].apply(status_emoji)
+table_df["Harga"] = table_df["Harga"].apply(lambda x: f"{x:,.0f}")
+table_df["Volume"] = table_df["Volume"].apply(volume_short)
+table_df["Value"] = table_df["Value"].apply(rupiah_short)
+for col in ["Breakout", "Support", "Resistance", "SL", "Target 1", "Target 2"]:
+    table_df[col] = table_df[col].apply(lambda x: f"{x:,.0f}")
+table_df["Risk/Reward"] = table_df["Risk/Reward"].apply(lambda x: f"1 : {x:.2f}")
+table_df["Chg %"] = table_df["Chg %"].apply(lambda x: f"{x:.2f}%")
+
+show_cols = [
+    "Rank", "Kode", "Harga", "Chg %", "Volume", "RVOL", "Value", "RSI", "MACD",
+    "MA20/MA50", "Trend", "Breakout", "Support", "Resistance", "Score",
+    "Status", "Entry Area", "SL", "Target 1", "Target 2", "Risk/Reward", "Alasan Sinyal"
+]
+
+st.markdown("### 🏆 RANKING BSJP")
+
 st.dataframe(
-    style_table(filtered),
+    table_df[show_cols],
     use_container_width=True,
-    height=520
+    height=535,
+    hide_index=True,
+    column_config={
+        "Rank": st.column_config.NumberColumn("Rank", width="small"),
+        "Kode": st.column_config.TextColumn("Kode", width="small"),
+        "Harga": st.column_config.TextColumn("Harga", width="small"),
+        "Chg %": st.column_config.TextColumn("Chg %", width="small"),
+        "Volume": st.column_config.TextColumn("Volume", width="small"),
+        "RVOL": st.column_config.NumberColumn("RVOL", format="%.2f", width="small"),
+        "Value": st.column_config.TextColumn("Value", width="small"),
+        "RSI": st.column_config.NumberColumn("RSI", format="%.1f", width="small"),
+        "MACD": st.column_config.TextColumn("MACD", width="small"),
+        "MA20/MA50": st.column_config.TextColumn("MA20/MA50", width="small"),
+        "Trend": st.column_config.TextColumn("Trend", width="small"),
+        "Breakout": st.column_config.TextColumn("Breakout", width="small"),
+        "Support": st.column_config.TextColumn("Support", width="small"),
+        "Resistance": st.column_config.TextColumn("Resistance", width="small"),
+        "Score": st.column_config.ProgressColumn(
+            "Score",
+            min_value=0,
+            max_value=100,
+            format="%d",
+            width="medium"
+        ),
+        "Status": st.column_config.TextColumn("Status", width="medium"),
+        "Entry Area": st.column_config.TextColumn("Entry Area", width="medium"),
+        "SL": st.column_config.TextColumn("SL", width="small"),
+        "Target 1": st.column_config.TextColumn("Target 1", width="small"),
+        "Target 2": st.column_config.TextColumn("Target 2", width="small"),
+        "Risk/Reward": st.column_config.TextColumn("Risk/Reward", width="small"),
+        "Alasan Sinyal": st.column_config.TextColumn("Alasan Sinyal", width="large"),
+    }
 )
 
 st.caption(f"Menampilkan 1 - {len(filtered)} dari {len(df)} saham")
 
-# =========================
+# ======================================================
 # TELEGRAM ALERT
-# =========================
+# ======================================================
 st.markdown("### 📲 Alert Telegram")
 
 if telegram_enabled:
@@ -826,9 +858,9 @@ if telegram_enabled:
 else:
     st.info("Aktifkan Telegram dari sidebar untuk mengirim alert.")
 
-# =========================
+# ======================================================
 # DETAIL PANEL
-# =========================
+# ======================================================
 st.markdown("---")
 st.markdown("### 🔎 DETAIL SAHAM TERPILIH")
 
@@ -852,7 +884,7 @@ with left:
         <p class="{status_class}">{row['Status']}</p>
         <hr>
         <p>Value: <b>{rupiah_short(row['Value'])}</b></p>
-        <p>Volume: <b>{row['Volume']:,.0f}</b></p>
+        <p>Volume: <b>{volume_short(row['Volume'])}</b></p>
         <p>RVOL: <b>{row['RVOL']}</b></p>
         <p>RSI: <b>{row['RSI']}</b></p>
         <p>Trend: <b>{row['Trend']}</b></p>
@@ -867,7 +899,7 @@ with mid:
         <p>{row['Alasan Sinyal']}</p>
         <hr>
         <p>MACD: <b>{row['MACD']}</b></p>
-        <p>MA20 / MA50: <b>{row['MA20 / MA50']}</b></p>
+        <p>MA20 / MA50: <b>{row['MA20/MA50']}</b></p>
         <p>Breakout: <b>{row['Breakout']:,.0f}</b></p>
         <p>Support: <b>{row['Support']:,.0f}</b></p>
         <p>Resistance: <b>{row['Resistance']:,.0f}</b></p>
